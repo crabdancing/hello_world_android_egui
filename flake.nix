@@ -18,6 +18,23 @@
     };
 
     flake-utils.url = "github:numtide/flake-utils";
+    android-nixpkgs = {
+      url = "github:tadfisher/android-nixpkgs";
+
+      # The main branch follows the "canary" channel of the Android SDK
+      # repository. Use another android-nixpkgs branch to explicitly
+      # track an SDK release channel.
+      #
+      # url = "github:tadfisher/android-nixpkgs/stable";
+      # url = "github:tadfisher/android-nixpkgs/beta";
+      # url = "github:tadfisher/android-nixpkgs/preview";
+      # url = "github:tadfisher/android-nixpkgs/canary";
+
+      # If you have nixpkgs as an input, this will replace the "nixpkgs" input
+      # for the "android" flake.
+      #
+      # inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = {
@@ -27,7 +44,7 @@
     flake-utils,
     rust-overlay,
     ...
-  }:
+  } @ inputs:
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs {
         inherit system;
@@ -38,6 +55,14 @@
         extensions = ["rust-analyzer" "rust-src"];
         targets = ["aarch64-linux-android"];
       };
+      android-sdk = inputs.android-nixpkgs.sdk (sdkPkgs:
+        with sdkPkgs; [
+          cmdline-tools-latest
+          build-tools-34-0-0
+          platform-tools
+          platforms-android-34
+          emulator
+        ]);
 
       craneLib = (crane.mkLib pkgs).overrideToolchain rust;
       TEMPLATE_PROJECT_NAME = craneLib.buildPackage {
@@ -62,12 +87,17 @@
       };
 
       packages.default = TEMPLATE_PROJECT_NAME;
+      packages.android-sdk = android-sdk;
 
       apps.default = flake-utils.lib.mkApp {
         drv = TEMPLATE_PROJECT_NAME;
       };
 
       devShells.default = craneLib.devShell {
+        # buildInputs = [
+        #   android-studio
+        #   android-sdk
+        # ];
         # Inherit inputs from checks.
         checks = self.checks.${system};
 
@@ -76,6 +106,7 @@
 
         # Extra inputs can be added here; cargo and rustc are provided by default.
         packages = [
+          android-sdk
           pkgs.cargo-apk
           # pkgs.ripgrep
         ];
