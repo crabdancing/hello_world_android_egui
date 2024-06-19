@@ -55,13 +55,17 @@
         extensions = ["rust-analyzer" "rust-src"];
         targets = ["aarch64-linux-android"];
       };
-      android-sdk = inputs.android-nixpkgs.sdk (sdkPkgs:
+      android-sdk = inputs.android-nixpkgs.sdk.${system} (sdkPkgs:
         with sdkPkgs; [
           cmdline-tools-latest
           build-tools-34-0-0
           platform-tools
-          platforms-android-34
+          # platforms-android-34
           emulator
+          # ndk-bundle
+          ndk-27-0-11902837
+          sources-android-34
+          platforms-android-32
         ]);
 
       craneLib = (crane.mkLib pkgs).overrideToolchain rust;
@@ -94,7 +98,10 @@
       };
 
       devShells.default = craneLib.devShell {
-        # buildInputs = [
+        ANDROID_NDK_HOME = "${android-sdk}/share/android-sdk/ndk";
+        # ANDROID_SDK_ROOT = "${android-sdk}/share/android-sdk/platforms/android-34";
+        # ANDROID_HOME = "${android-sdk}";
+        # buildInputs =
         #   android-studio
         #   android-sdk
         # ];
